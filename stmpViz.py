@@ -74,6 +74,10 @@ def cadd_score_to_drawing_val(caddScore):
 	return random.randrange(0, 10)
 	#return caddScore
 
+#one liner to extract a value from a line based on the specified columns
+def extract_value(line, lineSectionCol, attributeSectionCol, valueSelectionCol):
+	return line.split(lineSectionDelimiter)[lineSectionCol].split(attributeDelimeter)[attributeSectionCol].split(valueDelimiter)[valueSelectionCol]
+
 #----------------------------------------------------------------
 #NAME type functions
 #these return indicies to the colors defined in the config file
@@ -226,6 +230,10 @@ def sort_data_by_value(dataLines, lineSectionCol, attributeSectionCol, valueSele
 
 	#TODO: add error catching for NAN/empty values
 	if sortMode == 'float':
+		dataLines.sort(key = lambda x: float(extract_value(x, lineSectionCol, attributeSectionCol, valueSelectionCol)))
+	else:
+		dataLines.sort(key = lambda x: extract_value(x, lineSectionCol, attributeSectionCol, valueSelectionCol))
+	"""if sortMode == 'float':
 		dataLines.sort(key = lambda x: 
 			float(x.split(lineSectionDelimiter)[lineSectionCol]
 			.split(attributeDelimeter)[attributeSectionCol]
@@ -238,8 +246,34 @@ def sort_data_by_value(dataLines, lineSectionCol, attributeSectionCol, valueSele
 			.split(attributeDelimeter)[attributeSectionCol]
 			.split(valueDelimiter)[valueSelectionCol]
 			)
+	"""
 	print dataLines
 
+#writes out the beginning and ending indicies (a range) for each sorted value type
+#for example--if the data is sorted by chrmosome it will enter the ranges or each of the 23 chromosomes
+#for values like chromosome or tier which are distributed accross n discrete values THERE IS ONE MODE OF INPUT
+#for values like allele frequency that are distributed across infinite possible values there is another method
+def write_sorted_categories(lineSectionCol, attributeSectionCol, valueSelectionCol, numCategories, intervalStart, intervalEnd, sortedDataLines, saveDir):
+	curDataIdx = 0
+	stepSize = (intervalEnd - intervalStart)/numCategories
+	intervalCeiling = intervalStart + stepSize
+	intervals = []
+	while intervalCeiling < intervalEnd:
+		iStart = curDataIdx
+		while float(extract_value(sortedDataLines[curDataIdx], lineSectionCol, attributeSectionCol, valueSelectionCol)) < intervalCeiling:
+			curDataIdx += 1
+		intervals.append(['test', iStart, curDataIdx])
+		intervalCeiling += stepSize
+
+	savePath = os.path.join(saveDir, 'intervals.csv')
+	f = open(savePath, 'w')
+	#write it to a csv
+	for val in intervals:
+		for i in range(len(val)):
+			f.write(str(val[i]))
+			if i < len(val) - 1:
+				f.write(',')
+		f.write('\n')
 
 #writes output to a file that can then be read by the graphical interface
 #each variant gets its own file
@@ -248,7 +282,6 @@ def write_file(columns, linesToWrite, pos):
 	fullName = os.path.join(savePath, pos +'viz.txt')
 	f = open(fullName, 'w')
 	for line in linesToWrite:
-		print line
 		f.write(line)
 		f.write('\n')
 	f.close
@@ -274,17 +307,10 @@ idx_dict = create_idx_dict(columns)
 
 linesToWrite = []
 #NOTE THIS CODE IS OBSELETE AND OUGHT TO BE DELETED
-if mode == 'single':
-	#n = 0
-	#variant = data[n]
-	get_variant_info(variant, idx_dict, valsToWrite)
-	valsToWrite.append('#')
-	get_drawing_vals(variant, idx_dict, drawingCols, valsToWrite)
-	#append a section delimiter
-	valsToWrite.append('#')
-	get_name_vals(variant, idx_dict, nameCols, valsToWrite)
 
-elif mode == 'multiple':
+saveDir = "/home/noahfrie/noahfrie/devCode/stmpViz/outputFiles"
+
+if mode == 'multiple':
 	cntr = 0
 	for line in data:
 		valToWrite = ''
@@ -298,7 +324,7 @@ elif mode == 'multiple':
 		linesToWrite.append(valToWrite)
 
 	sort_data_by_value(linesToWrite, 1, 0, 1, 'float')
-
+	write_sorted_categories(1, 0, 1, 10, 0, 20000, linesToWrite, saveDir)
 
 write_file(columns, linesToWrite, "2")
 
