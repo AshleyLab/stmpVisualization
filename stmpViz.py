@@ -145,21 +145,23 @@ def read_tsv(tsv):
 #iterates through the values in a 
 
 #FREQUENCY, QUALITY, CLINVAR, CONSERVATION
-def get_drawing_vals(variantLine, idx_dict, drawingCols, valsToWrite):
+def get_drawing_vals(variantLine, idx_dict, drawingCols, valToWrite):
 	for col in drawingCols:
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
 		#if val == '': val = 'na'
 		#Values are written in this order: Name, real value, drawing value
 		drawingVal = str(drawingFunctions[col](val))
-		valsToWrite.append(col)
-		valsToWrite.append(valueDelimiter)
-		valsToWrite.append(val)
-		valsToWrite.append(valueDelimiter)
-		valsToWrite.append(drawingVal)
-		valsToWrite.append(attributeDelimeter)
+		valToWrite += col
+		valToWrite += valueDelimiter
+		valToWrite += val
+		valToWrite += valueDelimiter
+		valToWrite += drawingVal
+		valToWrite += attributeDelimeter
 
-def get_name_vals(variantLine, idx_dict, nameCols, valsToWrite):
+	return valToWrite
+
+def get_name_vals(variantLine, idx_dict, nameCols, valToWrite):
 	for col in nameCols:
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
@@ -178,15 +180,17 @@ def get_name_vals(variantLine, idx_dict, nameCols, valsToWrite):
 		if col == 'ExonicFunction_Summary': val = random.choice(["nonsynonymous", "synonymous", "frameshift deletion", "stopgain", "frameshift insertion", "stoploss"])
 
 		nameVal = str(nameFunctions[col](val))
-		valsToWrite.append(col)
-		valsToWrite.append(valueDelimiter)
-		valsToWrite.append(val)
-		valsToWrite.append(valueDelimiter)
-		valsToWrite.append(nameVal)
-		valsToWrite.append(attributeDelimeter)
+		valToWrite += col
+		valToWrite += valueDelimiter
+		valToWrite += val
+		valToWrite += valueDelimiter
+		valToWrite += nameVal
+		valToWrite += attributeDelimeter
+
+	return valToWrite
 
 #gets basic variant info (i.e ref/alt etc) and writes it
-def get_variant_info(variantLine, idx_dict, valsToWrite):
+def get_variant_info(variantLine, idx_dict, valToWrite):
 	#CHANGE the structure of this
 	for col in infoCols:
 		val = variantLine[idx_dict[col]]
@@ -194,8 +198,10 @@ def get_variant_info(variantLine, idx_dict, valsToWrite):
 		if val == '': val = 'na'
 		if col == 'Gene_Summary': val = random.choice(['OR2T35', "BRCA1", "AFF3", "MYO7B", "ZNF806", "NEB", "SP100", "SYN2"])
 
-		valsToWrite.append(val)
-		valsToWrite.append(valueDelimiter)
+		valToWrite += val
+		valToWrite += valueDelimiter
+
+	return valToWrite
 
 #obselete???
 def prepare_header(mode, valsToWrite):
@@ -207,15 +213,45 @@ def prepare_header(mode, valsToWrite):
 		print "error: improper mode specified"
 		sys.exit(0) 
 
+#sorts the data to be written by a specific value
+#three column indicies
+#line section columns: which tab separated column do we want?  ie do we want chrom ref info or numeric info or others?
+#attribute columns: which attribute value do we want
+#value columns: which value within an attribute do we want?
+#you must pass 0 for a column if it doesnt exist/isnt relevant
+#for example, a call sort_data_by_value(linesToWrite, 1, 0, 1) would sort by the 1st line (numeric variant attributes), the 0th attribute (quality) and the first value (raw qual score)
+def sort_data_by_value(dataLines, lineSectionCol, attributeSectionCol, valueSelectionCol, sortMode):
+	#the lambda function to sort the data fully splits it and extracts the value of interest
+	#sort by the float value at this position
+
+	#TODO: add error catching for NAN/empty values
+	if sortMode == 'float':
+		dataLines.sort(key = lambda x: 
+			float(x.split(lineSectionDelimiter)[lineSectionCol]
+			.split(attributeDelimeter)[attributeSectionCol]
+			.split(valueDelimiter)[valueSelectionCol]
+			))
+	#sort by the alpha numeric value at this position
+	else:
+		dataLines.sort(key = lambda x: 
+			x.split(lineSectionDelimiter)[lineSectionCol]
+			.split(attributeDelimeter)[attributeSectionCol]
+			.split(valueDelimiter)[valueSelectionCol]
+			)
+	print dataLines
+
+
 #writes output to a file that can then be read by the graphical interface
 #each variant gets its own file
-def write_file(columns, valsToWrite, pos):
-	savePath = "/home/noahfrie/noahfrie/other/stmpViz/outputFiles/"
+def write_file(columns, linesToWrite, pos):
+	savePath = "/home/noahfrie/noahfrie/devCode/stmpViz/outputFiles"
 	fullName = os.path.join(savePath, pos +'viz.txt')
 	f = open(fullName, 'w')
-	for line in valsToWrite:
-		for val in line:
-			f.write(val)
+	for line in linesToWrite:
+		print line
+		f.write(line)
+		f.write('\n')
+	f.close
 
 
 
@@ -236,7 +272,7 @@ valsToWrite = []
 #prepare_header(mode, valsToWrite)
 idx_dict = create_idx_dict(columns)
 
-
+linesToWrite = []
 #NOTE THIS CODE IS OBSELETE AND OUGHT TO BE DELETED
 if mode == 'single':
 	#n = 0
@@ -249,17 +285,22 @@ if mode == 'single':
 	get_name_vals(variant, idx_dict, nameCols, valsToWrite)
 
 elif mode == 'multiple':
+	cntr = 0
 	for line in data:
+		valToWrite = ''
 		variant = line 
-		get_variant_info(variant, idx_dict, valsToWrite)
-		valsToWrite.append(lineSectionDelimiter)
-		get_drawing_vals(variant, idx_dict, drawingCols, valsToWrite)
+		valToWrite = get_variant_info(variant, idx_dict, valToWrite)
+		valToWrite += lineSectionDelimiter
+		valToWrite = get_drawing_vals(variant, idx_dict, drawingCols, valToWrite)
 		#append a section delimiter
-		valsToWrite.append(lineSectionDelimiter)
-		get_name_vals(variant, idx_dict, nameCols, valsToWrite)
-		valsToWrite.append('\n')
+		valToWrite += lineSectionDelimiter
+		valToWrite = get_name_vals(variant, idx_dict, nameCols, valToWrite)
+		linesToWrite.append(valToWrite)
 
-write_file(columns, valsToWrite, "1")
+	sort_data_by_value(linesToWrite, 1, 0, 1, 'float')
+
+
+write_file(columns, linesToWrite, "2")
 
 
 
