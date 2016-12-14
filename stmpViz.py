@@ -76,7 +76,10 @@ def cadd_score_to_drawing_val(caddScore):
 
 #one liner to extract a value from a line based on the specified columns
 def extract_value(line, lineSectionCol, attributeSectionCol, valueSelectionCol):
-	return line.split(lineSectionDelimiter)[lineSectionCol].split(attributeDelimeter)[attributeSectionCol].split(valueDelimiter)[valueSelectionCol]
+	val = line.split(lineSectionDelimiter)[lineSectionCol].split(attributeDelimeter)[attributeSectionCol].split(valueDelimiter)[valueSelectionCol]
+	#handling of 'na' values
+	if val == 'na': return -1
+	return val
 
 #----------------------------------------------------------------
 #NAME type functions
@@ -140,10 +143,11 @@ def read_tsv(tsv):
 	data = []
 	with open(tsv) as f:
 		lines = f.readlines()
-		columns = lines[0].split()
+		#just to be safe we strip out all returns from the input data (carriage returns and new line returns)
+		columns = lines[0].strip('\n').strip('\r').split('\t')
 		#for line in lines[1:]:
 		for line in lines[1:100]:
-			data.append(line.split('\t'))
+			data.append(line.strip('\n').strip('\r').split('\t'))
 	return columns, data
 
 #iterates through the values in a 
@@ -153,7 +157,7 @@ def get_drawing_vals(variantLine, idx_dict, drawingCols, valToWrite):
 	for col in drawingCols:
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
-		#if val == '': val = 'na'
+		if val == '': val = 'na'
 		#Values are written in this order: Name, real value, drawing value
 		drawingVal = str(drawingFunctions[col](val))
 		valToWrite += col
@@ -197,6 +201,7 @@ def get_name_vals(variantLine, idx_dict, nameCols, valToWrite):
 def get_variant_info(variantLine, idx_dict, valToWrite):
 	#CHANGE the structure of this
 	for col in infoCols:
+		print idx_dict
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
 		if val == '': val = 'na'
@@ -233,37 +238,38 @@ def sort_data_by_value(dataLines, lineSectionCol, attributeSectionCol, valueSele
 		dataLines.sort(key = lambda x: float(extract_value(x, lineSectionCol, attributeSectionCol, valueSelectionCol)))
 	else:
 		dataLines.sort(key = lambda x: extract_value(x, lineSectionCol, attributeSectionCol, valueSelectionCol))
-	"""if sortMode == 'float':
-		dataLines.sort(key = lambda x: 
-			float(x.split(lineSectionDelimiter)[lineSectionCol]
-			.split(attributeDelimeter)[attributeSectionCol]
-			.split(valueDelimiter)[valueSelectionCol]
-			))
-	#sort by the alpha numeric value at this position
-	else:
-		dataLines.sort(key = lambda x: 
-			x.split(lineSectionDelimiter)[lineSectionCol]
-			.split(attributeDelimeter)[attributeSectionCol]
-			.split(valueDelimiter)[valueSelectionCol]
-			)
-	"""
-	print dataLines
 
 #writes out the beginning and ending indicies (a range) for each sorted value type
 #for example--if the data is sorted by chrmosome it will enter the ranges or each of the 23 chromosomes
 #for values like chromosome or tier which are distributed accross n discrete values THERE IS ONE MODE OF INPUT
 #for values like allele frequency that are distributed across infinite possible values there is another method
-def write_sorted_categories(lineSectionCol, attributeSectionCol, valueSelectionCol, numCategories, intervalStart, intervalEnd, sortedDataLines, saveDir):
+#you can run this function in a second mode: specifiedColumns != where it writes intervals based on specified columns
+def write_sorted_categories(lineSectionCol, attributeSectionCol, valueSelectionCol, numCategories, intervalStart, intervalEnd, sortedDataLines, saveDir, specifiedLabels = None):
 	curDataIdx = 0
 	stepSize = (intervalEnd - intervalStart)/numCategories
 	intervalCeiling = intervalStart + stepSize
 	intervals = []
-	while intervalCeiling < intervalEnd:
-		iStart = curDataIdx
-		while float(extract_value(sortedDataLines[curDataIdx], lineSectionCol, attributeSectionCol, valueSelectionCol)) < intervalCeiling:
-			curDataIdx += 1
-		intervals.append(['test', iStart, curDataIdx])
-		intervalCeiling += stepSize
+
+	if specifiedLabels != None:
+		for label in specifiedLabels:
+			iStart = curDataIdx
+			while float(extract_value(sortedDataLines[curDataIdx], lineSectionCol, attributeSectionCol, valueSelectionCol)) == label and curDataIdx < len(sortedDataLines) - 1:
+				curDataIdx += 1
+			intervals.append([label, iStart, curDataIdx])
+
+	else:
+		while intervalCeiling < intervalEnd:
+			iStart = curDataIdx
+			startValue = extract_value(sortedDataLines[curDataIdx], lineSectionCol, attributeSectionCol, valueSelectionCol)
+			while float(extract_value(sortedDataLines[curDataIdx], lineSectionCol, attributeSectionCol, valueSelectionCol)) < intervalCeiling and curDataIdx < len(sortedDataLines) - 1:
+				curDataIdx += 1
+			endValue = extract_value(sortedDataLines[curDataIdx], lineSectionCol, attributeSectionCol, valueSelectionCol)
+			#label the data with the interval between the start and end
+			label = str(startValue) + ' - ' + str(endValue)
+			intervals.append([label, iStart, curDataIdx])
+			intervalCeiling += stepSize
+
+	print intervals
 
 	savePath = os.path.join(saveDir, 'intervals.csv')
 	f = open(savePath, 'w')
@@ -300,6 +306,8 @@ infoCols, drawingCols, nameCols = read_config_columns(os.getcwd() + '/config.txt
 #infoCols = ['QUAL','Max_Allele_Freq_Summary','hg19_phastConsElements46way_r_MSA_MCE_lod','hg19_ljb26_all_CADD_raw','AD','hg19_ljb26_all_Polyphen2_HDIV_score','exac_tolerance_r_lof_z','DP']
 
 columns, data = read_tsv(tsv)
+print "zelda fitzgerald"
+print data
 valsToWrite = []
 
 #prepare_header(mode, valsToWrite)
