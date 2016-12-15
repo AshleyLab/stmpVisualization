@@ -10,6 +10,7 @@
 import sys
 import os
 import random
+import json
 
 #file format: each variant is listed, separated by a newline.  Within each variant, the relevant values are separated by the specififed delimiters
 
@@ -292,7 +293,43 @@ def write_file(columns, linesToWrite, pos):
 		f.write('\n')
 	f.close
 
+#initializes the json dictionary structure used to store data values
+#the structure is:
+#for each variant: 
+#{
+#	coreStmpFields: {
+# 		infoFields: {}
+# 		numericAnnotations: {}	
+# 		stringAnnotations: {}
+#	}
+#	metainfo?
+#}
+def init_json_structure(infoCols, numericCols, stringCols):
+	data = []
+	for i in range(100):
+		variant = {}
+		coreStmpFields = {'infoFields': '', 'numericAnnotations': '', 'stringAnnotations': ''}
+		infoDict = {}
+		for col in infoCols:
+			infoDict[col] = ''
+		numericDict = {}
+		for col in numericCols:
+			numericDict[col] = ''
+		stringDict = {}
+		for col in stringCols:
+			stringDict[col] = ''
+		coreStmpFields['infoFields'] = infoDict
+		coreStmpFields['numericAnnotations'] = numericDict
+		coreStmpFields['stringAnnotations'] = stringDict
 
+		variant['coreStmpFields'] = coreStmpFields
+		data.append(variant)
+	return data
+
+#testing function that pretty prints the json structure
+def json_pretty_print_struct(jsonFile):
+	parsed = json.loads(jsonFile)
+	print json.dumps(parsed, indent=4, sort_keys=True)
 
 #--------------------MAIN CODE-------------------------------
 
@@ -303,6 +340,13 @@ mode = 'multiple'
 #columns: the names for the values that ought to be extracted from the STMP data--these columns are set by the read_config_cols function
 #they are global variables 
 infoCols, drawingCols, nameCols = read_config_columns(os.getcwd() + '/config.txt')
+
+print 'attempt load'
+jsonData = init_json_structure(infoCols, drawingCols, nameCols)
+print 'attempt print'
+
+json_pretty_print_struct(json.dumps(jsonData))
+sys.exit()
 #infoCols = ['QUAL','Max_Allele_Freq_Summary','hg19_phastConsElements46way_r_MSA_MCE_lod','hg19_ljb26_all_CADD_raw','AD','hg19_ljb26_all_Polyphen2_HDIV_score','exac_tolerance_r_lof_z','DP']
 
 columns, data = read_tsv(tsv)
