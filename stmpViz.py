@@ -154,23 +154,21 @@ def read_tsv(tsv):
 #iterates through the values in a 
 
 #FREQUENCY, QUALITY, CLINVAR, CONSERVATION
-def get_drawing_vals(variantLine, idx_dict, drawingCols, valToWrite):
+def get_numeric_info(variantLine, idx_dict, drawingCols, variantRecord, valToWrite):
 	for col in drawingCols:
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
 		if val == '': val = 'na'
 		#Values are written in this order: Name, real value, drawing value
 		drawingVal = str(drawingFunctions[col](val))
-		valToWrite += col
-		valToWrite += valueDelimiter
-		valToWrite += val
-		valToWrite += valueDelimiter
-		valToWrite += drawingVal
-		valToWrite += attributeDelimeter
+
+		variantRecord['coreStmpFields']['numericAnnotations'][col]['value'] = val
+		variantRecord['coreStmpFields']['numericAnnotations'][col]['drawingValue'] = drawingVal
 
 	return valToWrite
 
-def get_name_vals(variantLine, idx_dict, nameCols, valToWrite):
+#Note noah you still must cange this dude!
+def get_name_vals(variantLine, idx_dict, nameCols, variantRecord, valToWrite):
 	for col in nameCols:
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
@@ -199,29 +197,22 @@ def get_name_vals(variantLine, idx_dict, nameCols, valToWrite):
 	return valToWrite
 
 #gets basic variant info (i.e ref/alt etc) and writes it
-def get_variant_info(variantLine, idx_dict, valToWrite):
+def get_variant_info(variantLine, idx_dict, variantRecord, valToWrite):
 	#CHANGE the structure of this
 	for col in infoCols:
-		print idx_dict
+		print col
+		print 'krasnodar'
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
 		if val == '': val = 'na'
 		if col == 'Gene_Summary': val = random.choice(['OR2T35', "BRCA1", "AFF3", "MYO7B", "ZNF806", "NEB", "SP100", "SYN2"])
 
+		variantRecord['coreStmpFields']['infoFields'][col] = val
+
 		valToWrite += val
 		valToWrite += valueDelimiter
 
 	return valToWrite
-
-#obselete???
-def prepare_header(mode, valsToWrite):
-	if mode == 'single':
-		valsToWrite.append(['#single', 'explanation: single mode--this data is intended to be only a single representation of data'])
-	elif mode == "full":
-		valsToWrite.append(['#multiple', 'explanation: mutliple mode--this data is intended to be a representation of the entire data returned by stmp'])
-	else:
-		print "error: improper mode specified"
-		sys.exit(0) 
 
 #sorts the data to be written by a specific value
 #three column indicies
@@ -304,27 +295,26 @@ def write_file(columns, linesToWrite, pos):
 #	}
 #	metainfo?
 #}
-def init_json_structure(infoCols, numericCols, stringCols):
-	data = []
-	for i in range(100):
-		variant = {}
-		coreStmpFields = {'infoFields': '', 'numericAnnotations': '', 'stringAnnotations': ''}
-		infoDict = {}
-		for col in infoCols:
-			infoDict[col] = ''
-		numericDict = {}
-		for col in numericCols:
-			numericDict[col] = ''
-		stringDict = {}
-		for col in stringCols:
-			stringDict[col] = ''
-		coreStmpFields['infoFields'] = infoDict
-		coreStmpFields['numericAnnotations'] = numericDict
-		coreStmpFields['stringAnnotations'] = stringDict
 
-		variant['coreStmpFields'] = coreStmpFields
-		data.append(variant)
-	return data
+#initializes the data structure for representation of variants in the json file
+def init_variant_structure(infoCols, numericCols, stringCols):
+	variant = {}
+	coreStmpFields = {'infoFields': '', 'numericAnnotations': '', 'stringAnnotations': ''}
+	infoDict = {}
+	for col in infoCols:
+		infoDict[col] = ''
+	numericDict = {}
+	for col in numericCols:
+		numericEntryDict = {'value': '', 'drawingValue': ''}
+		numericDict[col] = numericEntryDict
+	stringDict = {}
+	for col in stringCols:
+		stringDict[col] = ''
+	coreStmpFields['infoFields'] = infoDict
+	coreStmpFields['numericAnnotations'] = numericDict
+	coreStmpFields['stringAnnotations'] = stringDict
+	variant['coreStmpFields'] = coreStmpFields
+	return variant
 
 #testing function that pretty prints the json structure
 def json_pretty_print_struct(jsonFile):
@@ -338,53 +328,61 @@ def write_json_file(filename, parsedJson):
 #--------------------MAIN CODE-------------------------------
 
 tsv = sys.argv[1]
-#columns = sampleCols
-mode = 'multiple'
 
 #columns: the names for the values that ought to be extracted from the STMP data--these columns are set by the read_config_cols function
 #they are global variables 
-infoCols, drawingCols, nameCols = read_config_columns(os.getcwd() + '/config.txt')
+infoCols, numericCols, nameCols = read_config_columns(os.getcwd() + '/config.txt')
 
-print 'attempt load'
-jsonData = init_json_structure(infoCols, drawingCols, nameCols)
-print 'attempt print'
+#print 'attempt load'
+#jsonData = init_json_structure(infoCols, drawingCols, nameCols)
 
-json_pretty_print_struct(json.dumps(jsonData))
-
-write_json_file('testJson', jsonData)
-sys.exit()
 #infoCols = ['QUAL','Max_Allele_Freq_Summary','hg19_phastConsElements46way_r_MSA_MCE_lod','hg19_ljb26_all_CADD_raw','AD','hg19_ljb26_all_Polyphen2_HDIV_score','exac_tolerance_r_lof_z','DP']
 
 columns, data = read_tsv(tsv)
-print "zelda fitzgerald"
-print data
+
+#Alert delete me
 valsToWrite = []
 
 #prepare_header(mode, valsToWrite)
 idx_dict = create_idx_dict(columns)
 
+#alert delete me
 linesToWrite = []
 #NOTE THIS CODE IS OBSELETE AND OUGHT TO BE DELETED
 
 saveDir = "/home/noahfrie/noahfrie/devCode/stmpViz/outputFiles"
 
-if mode == 'multiple':
-	cntr = 0
-	for line in data:
-		valToWrite = ''
-		variant = line 
-		valToWrite = get_variant_info(variant, idx_dict, valToWrite)
-		valToWrite += lineSectionDelimiter
-		valToWrite = get_drawing_vals(variant, idx_dict, drawingCols, valToWrite)
-		#append a section delimiter
-		valToWrite += lineSectionDelimiter
-		valToWrite = get_name_vals(variant, idx_dict, nameCols, valToWrite)
-		linesToWrite.append(valToWrite)
+#main program loop
+jsonData = []
+for line in data:
+	curVariant = init_variant_structure(infoCols, numericCols, nameCols)
 
-	sort_data_by_value(linesToWrite, 1, 0, 1, 'float')
-	write_sorted_categories(1, 0, 1, 10, 0, 20000, linesToWrite, saveDir)
+	valToWrite = ''
 
-write_file(columns, linesToWrite, "2")
+	variant = line 
+	get_variant_info(variant, idx_dict, curVariant, valToWrite)
+	
+
+	valToWrite = get_numeric_info(variant, idx_dict, numericCols, curVariant, valToWrite)
+	#append a section delimiter
+	valToWrite += lineSectionDelimiter
+	valToWrite = get_name_vals(variant, idx_dict, nameCols, curVariant, valToWrite)
+	linesToWrite.append(valToWrite)
+
+	jsonData.append(curVariant)
+
+
+#sort_data_by_value(linesToWrite, 1, 0, 1, 'float')
+#write_sorted_categories(1, 0, 1, 10, 0, 20000, linesToWrite, saveDir)
+
+
+print 'attempt print'
+json_pretty_print_struct(json.dumps(jsonData))
+write_json_file('testJson', jsonData)
+
+print 'localized convection'
+
+#write_file(columns, linesToWrite, "2")
 
 
 
