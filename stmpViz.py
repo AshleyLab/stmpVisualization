@@ -331,6 +331,10 @@ def json_pretty_print_struct(jsonFile):
 	parsed = json.loads(jsonFile)
 	print json.dumps(parsed, indent=4, sort_keys=True)
 
+def write_json_file(filename, parsedJson):
+	jsonFile = open(filename, 'w+')
+	jsonFile.write(json.dumps(parsedJson))
+
 #--------------------MAIN CODE-------------------------------
 
 tsv = sys.argv[1]
@@ -346,6 +350,8 @@ jsonData = init_json_structure(infoCols, drawingCols, nameCols)
 print 'attempt print'
 
 json_pretty_print_struct(json.dumps(jsonData))
+
+write_json_file('testJson', jsonData)
 sys.exit()
 #infoCols = ['QUAL','Max_Allele_Freq_Summary','hg19_phastConsElements46way_r_MSA_MCE_lod','hg19_ljb26_all_CADD_raw','AD','hg19_ljb26_all_Polyphen2_HDIV_score','exac_tolerance_r_lof_z','DP']
 
