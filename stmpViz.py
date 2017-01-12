@@ -154,7 +154,7 @@ def read_tsv(tsv):
 #iterates through the values in a 
 
 #FREQUENCY, QUALITY, CLINVAR, CONSERVATION
-def get_numeric_info(variantLine, idx_dict, drawingCols, variantRecord, valToWrite):
+def get_numeric_info(variantLine, idx_dict, drawingCols, variantRecord):
 	for col in drawingCols:
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
@@ -165,10 +165,8 @@ def get_numeric_info(variantLine, idx_dict, drawingCols, variantRecord, valToWri
 		variantRecord['coreStmpFields']['numericAnnotations'][col]['value'] = val
 		variantRecord['coreStmpFields']['numericAnnotations'][col]['drawingValue'] = drawingVal
 
-	return valToWrite
-
 #Note noah you still must cange this dude!
-def get_name_vals(variantLine, idx_dict, nameCols, variantRecord, valToWrite):
+def get_name_vals(variantLine, idx_dict, nameCols, variantRecord):
 	for col in nameCols:
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
@@ -186,22 +184,15 @@ def get_name_vals(variantLine, idx_dict, nameCols, variantRecord, valToWrite):
 		if col == 'Function_Summary': val = random.choice(["exonic", "intronic", "UTR3", "splicing", "ncRNA_exonic"])
 		if col == 'ExonicFunction_Summary': val = random.choice(["nonsynonymous", "synonymous", "frameshift deletion", "stopgain", "frameshift insertion", "stoploss"])
 
-		nameVal = str(nameFunctions[col](val))
-		valToWrite += col
-		valToWrite += valueDelimiter
-		valToWrite += val
-		valToWrite += valueDelimiter
-		valToWrite += nameVal
-		valToWrite += attributeDelimeter
+		drawingVal = str(nameFunctions[col](val))
+		variantRecord['coreStmpFields']['stringAnnotations'][col]['value'] = val
+		variantRecord['coreStmpFields']['stringAnnotations'][col]['drawingValue'] = drawingVal
 
-	return valToWrite
 
 #gets basic variant info (i.e ref/alt etc) and writes it
-def get_variant_info(variantLine, idx_dict, variantRecord, valToWrite):
+def get_variant_info(variantLine, idx_dict, variantRecord):
 	#CHANGE the structure of this
 	for col in infoCols:
-		print col
-		print 'krasnodar'
 		val = variantLine[idx_dict[col]]
 		#ensure that we don't append the empty string, this breaks interpretation
 		if val == '': val = 'na'
@@ -209,10 +200,6 @@ def get_variant_info(variantLine, idx_dict, variantRecord, valToWrite):
 
 		variantRecord['coreStmpFields']['infoFields'][col] = val
 
-		valToWrite += val
-		valToWrite += valueDelimiter
-
-	return valToWrite
 
 #sorts the data to be written by a specific value
 #three column indicies
@@ -309,7 +296,8 @@ def init_variant_structure(infoCols, numericCols, stringCols):
 		numericDict[col] = numericEntryDict
 	stringDict = {}
 	for col in stringCols:
-		stringDict[col] = ''
+		stringEntryDict = {'value': '', 'drawingValue': ''}
+		stringDict[col] = stringEntryDict
 	coreStmpFields['infoFields'] = infoDict
 	coreStmpFields['numericAnnotations'] = numericDict
 	coreStmpFields['stringAnnotations'] = stringDict
@@ -357,17 +345,13 @@ jsonData = []
 for line in data:
 	curVariant = init_variant_structure(infoCols, numericCols, nameCols)
 
-	valToWrite = ''
 
 	variant = line 
-	get_variant_info(variant, idx_dict, curVariant, valToWrite)
+	get_variant_info(variant, idx_dict, curVariant)
 	
 
-	valToWrite = get_numeric_info(variant, idx_dict, numericCols, curVariant, valToWrite)
-	#append a section delimiter
-	valToWrite += lineSectionDelimiter
-	valToWrite = get_name_vals(variant, idx_dict, nameCols, curVariant, valToWrite)
-	linesToWrite.append(valToWrite)
+	get_numeric_info(variant, idx_dict, numericCols, curVariant)
+	get_name_vals(variant, idx_dict, nameCols, curVariant)
 
 	jsonData.append(curVariant)
 
