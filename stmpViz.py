@@ -201,22 +201,17 @@ def get_variant_info(variantLine, idx_dict, variantRecord):
 		variantRecord['coreStmpFields']['infoFields'][col] = val
 
 
-#sorts the data to be written by a specific value
-#three column indicies
-#line section columns: which tab separated column do we want?  ie do we want chrom ref info or numeric info or others?
-#attribute columns: which attribute value do we want
-#value columns: which value within an attribute do we want?
-#you must pass 0 for a column if it doesnt exist/isnt relevant
-#for example, a call sort_data_by_value(linesToWrite, 1, 0, 1) would sort by the 1st line (numeric variant attributes), the 0th attribute (quality) and the first value (raw qual score)
-def sort_data_by_value(dataLines, lineSectionCol, attributeSectionCol, valueSelectionCol, sortMode):
-	#the lambda function to sort the data fully splits it and extracts the value of interest
-	#sort by the float value at this position
+#this function sorts data by the value specifed at the json value path
+#json value path is a string of the form "['keyLevel1']['keyLevel2']"...  its important to note you must have single quotes inside double quotes for proper string comprehension
+#note that while this function is very simple and arbitrarily extensible (we can sort at any level of any shape of a json structure), this function is super hacky, and is bad python
+#I may eventually change it, for now we just need to know that the actual lambda function line is store in the value of the string 'cmd'
+#we can print this string for debugging purposes
+#note that the user must supply the proper jsonValuePath
+def sort_data(data, jsonValuePath):
+	cmd = 'data.sort(key = lambda entry: entry' + jsonValuePath + ')'
+	#print cmd
+	exec(cmd)
 
-	#TODO: add error catching for NAN/empty values
-	if sortMode == 'float':
-		dataLines.sort(key = lambda x: float(extract_value(x, lineSectionCol, attributeSectionCol, valueSelectionCol)))
-	else:
-		dataLines.sort(key = lambda x: extract_value(x, lineSectionCol, attributeSectionCol, valueSelectionCol))
 
 #writes out the beginning and ending indicies (a range) for each sorted value type
 #for example--if the data is sorted by chrmosome it will enter the ranges or each of the 23 chromosomes
@@ -315,14 +310,16 @@ def write_json_file(filename, parsedJson):
 
 #--------------------MAIN CODE-------------------------------
 
+#test code for sorting data by specified value
+
+#data = [{'dog': 1, 'cat': 5, 'fish': 3, 'turtles': {'turtle1': 0, 'turtle2': 10}}, {'dog': 10, 'cat': -5, 'fish': 1, 'turtles': {'turtle1': 10, 'turtle2': -10}}, {'dog': 7, 'cat': 2, 'fish': 100, 'turtles': {'turtle1': -5, 'turtle2': 4}}]
+#jsonValuePath = "['turtles']['turtle1']"
+
 tsv = sys.argv[1]
 
 #columns: the names for the values that ought to be extracted from the STMP data--these columns are set by the read_config_cols function
 #they are global variables 
 infoCols, numericCols, nameCols = read_config_columns(os.getcwd() + '/config.txt')
-
-#print 'attempt load'
-#jsonData = init_json_structure(infoCols, drawingCols, nameCols)
 
 #infoCols = ['QUAL','Max_Allele_Freq_Summary','hg19_phastConsElements46way_r_MSA_MCE_lod','hg19_ljb26_all_CADD_raw','AD','hg19_ljb26_all_Polyphen2_HDIV_score','exac_tolerance_r_lof_z','DP']
 
@@ -344,17 +341,14 @@ saveDir = "/home/noahfrie/noahfrie/devCode/stmpViz/outputFiles"
 jsonData = []
 for line in data:
 	curVariant = init_variant_structure(infoCols, numericCols, nameCols)
-
-
 	variant = line 
 	get_variant_info(variant, idx_dict, curVariant)
-	
-
 	get_numeric_info(variant, idx_dict, numericCols, curVariant)
 	get_name_vals(variant, idx_dict, nameCols, curVariant)
-
 	jsonData.append(curVariant)
 
+sortingJsonValuePath = "['coreStmpFields']['numericAnnotations']['DP']['value']"
+sort_data(jsonData, sortingJsonValuePath)
 
 #sort_data_by_value(linesToWrite, 1, 0, 1, 'float')
 #write_sorted_categories(1, 0, 1, 10, 0, 20000, linesToWrite, saveDir)
