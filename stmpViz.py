@@ -11,6 +11,7 @@ import sys
 import os
 import random
 import json
+import drawing_functions
 
 #file format: each variant is listed, separated by a newline.  Within each variant, the relevant values are separated by the specififed delimiters
 
@@ -21,6 +22,9 @@ lineSectionDelimiter = '\t'
 attributeDelimeter = '|'
 #marks the limit between values within the same section
 valueDelimiter = ';'
+
+defaultNumericDrawingCols = ['QUAL','Max_Allele_Freq_Summary','hg19_phastConsElements46way_r_MSA_MCE_lod','hg19_ljb26_all_CADD_raw','AD','hg19_ljb26_all_Polyphen2_HDIV_score','exac_tolerance_r_lof_z','DP']
+defaultStringDrawingCols = ['clinvar_clinical_significance','Function_Summary','ExonicFunction_Summary']
 
 #for testing purposes 
 sampleCols = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT', 'UDN755592', 'Gene_Summary', 'Description_Summary', 'Function_Summary', 'ExonicFunction_Summary', 'Max_Allele_Freq_Summary', 'AC', 'GT', 'DP', 'AD', 'Annovar_Func_refGene', 'Annovar_Gene_refGene', 'Annovar_GeneDetail_refGene', 'Annovar_ExonicFunc_refGene', 'Annovar_AAChange_refGene', 'Annovar_Func_knownGene', 'Annovar_Gene_knownGene', 'Annovar_GeneDetail_knownGene', 'Annovar_ExonicFunc_knownGene', 'Annovar_AAChange_knownGene', 'Annovar_Func_wgEncodeGencodeBasicV19', 'Annovar_Gene_wgEncodeGencodeBasicV19', 'Annovar_GeneDetail_wgEncodeGencodeBasicV19', 'Annovar_ExonicFunc_wgEncodeGencodeBasicV19', 'Annovar_AAChange_wgEncodeGencodeBasicV19', 'snpeff_INFO', 'uk10k_AF', 'gonl_AF', 'wellderly_freq_AF', 'hg19_popfreq_all_20150413_pop_freq_max', 'hg19_popfreq_all_20150413_1000g_all', 'hg19_popfreq_all_20150413_1000g_afr', 'hg19_popfreq_all_20150413_1000g_amr', 'hg19_popfreq_all_20150413_1000g_eas', 'hg19_popfreq_all_20150413_1000g_eur', 'hg19_popfreq_all_20150413_1000g_sas', 'hg19_popfreq_all_20150413_exac_all', 'hg19_popfreq_all_20150413_exac_afr', 'hg19_popfreq_all_20150413_exac_amr', 'hg19_popfreq_all_20150413_exac_eas', 'hg19_popfreq_all_20150413_exac_fin', 'hg19_popfreq_all_20150413_exac_nfe', 'hg19_popfreq_all_20150413_exac_oth', 'hg19_popfreq_all_20150413_exac_sas', 'hg19_popfreq_all_20150413_esp6500siv2_all', 'hg19_popfreq_all_20150413_esp6500siv2_aa', 'hg19_popfreq_all_20150413_esp6500siv2_ea', 'hg19_popfreq_all_20150413_cg46', 'refseq_r_geneName', 'refseq_r_name', 'refseq_r_strand', 'refseq_r_cdsStart', 'refseq_r_cdsEnd', 'refseq_r_exonCount', 'clinvar_mut', 'clinvar_measureset_id', 'clinvar_symbol', 'clinvar_clinical_significance', 'clinvar_review_status', 'clinvar_hgvs_c', 'clinvar_hgvs_p', 'clinvar_all_submitters', 'clinvar_all_traits', 'clinvar_all_pmids', 'clinvar_pathogenic', 'clinvar_conflicted', 'clinvar_CLNSTARS', 'hg19_phastConsElements46way_r_MSA_MCE_lod', 'hg19_phastConsElements46way_r_MSA_MCE_score', 'hg19_ljb26_all_SIFT_score', 'hg19_ljb26_all_SIFT_pred', 'hg19_ljb26_all_Polyphen2_HDIV_score', 'hg19_ljb26_all_Polyphen2_HDIV_pred', 'hg19_ljb26_all_Polyphen2_HVAR_score', 'hg19_ljb26_all_Polyphen2_HVAR_pred', 'hg19_ljb26_all_LRT_score', 'hg19_ljb26_all_LRT_pred', 'hg19_ljb26_all_MutationTaster_score', 'hg19_ljb26_all_MutationTaster_pred', 'hg19_ljb26_all_MutationAssessor_score', 'hg19_ljb26_all_MutationAssessor_pred', 'hg19_ljb26_all_FATHMM_score', 'hg19_ljb26_all_FATHMM_pred', 'hg19_ljb26_all_RadialSVM_score', 'hg19_ljb26_all_RadialSVM_pred', 'hg19_ljb26_all_LR_score', 'hg19_ljb26_all_LR_pred', 'hg19_ljb26_all_VEST3_score', 'hg19_ljb26_all_CADD_raw', 'hg19_ljb26_all_CADD_phred', 'hg19_ljb26_all_GERP++_RS', 'hg19_ljb26_all_phyloP46way_placental', 'hg19_ljb26_all_phyloP100way_vertebrate', 'hg19_ljb26_all_SiPhy_29way_logOdds', 'exac03_AF', 'exac_tolerance_r_transcript', 'exac_tolerance_r_gene', 'exac_tolerance_r_n_exons', 'exac_tolerance_r_bp', 'exac_tolerance_r_syn_z', 'exac_tolerance_r_mis_z', 'exac_tolerance_r_lof_z', 'exac_tolerance_r_pLI', 'gene_info_r_synonyms', 'gene_info_r_type_of_gene', 'gene_info_r_symbol_from_nomenclature_authority', 'gene_info_r_full_name_from_nomenclature_authority', 'gene_info_r_other_designations', 'hg19_wgEncodeBroadHmmNhlfHMM_r_info', 'hg19_wgEncodeBroadHmmHmecHMM_r_info', 'hg19_wgEncodeBroadHmmH1hescHMM_r_info', 'hg19_wgEncodeBroadHmmHuvecHMM_r_info', 'hg19_wgEncodeBroadHmmNhekHMM_r_info', 'hg19_wgEncodeBroadHmmHsmmHMM_r_info', 'hg19_wgEncodeBroadHmmGm12878HMM_r_info', 'hg19_wgEncodeRegDnaseClusteredV3_r_info', 'hg19_wgEncodeRegDnaseClusteredV3_r_disease', 'hg19_geneReviews_r_bin', 'hg19_geneReviews_r_name']
@@ -34,7 +38,11 @@ drawingFunctions = {
 	'AD': lambda x: allele_depth_to_drawing_val(x),
 	'hg19_ljb26_all_Polyphen2_HDIV_score': lambda x: polyphen2_score_to_drawing_val(x),
 	'exac_tolerance_r_lof_z': lambda x: exac_tolerance_to_drawing_val(x),
-	'DP': lambda x: dp_to_drawing_val(x)
+	'DP': lambda x: dp_to_drawing_val(x),
+	#ALERT: this is problematic add these functions back in later
+	'uk10k_AF': lambda x: dp_to_drawing_val(x),
+	'gonl_AF': lambda x: dp_to_drawing_val(x),
+	'wellderly_freq_AF': lambda x: dp_to_drawing_val(x)
 }
 
 nameFunctions = {
@@ -118,18 +126,16 @@ def read_config_columns(configFile):
 	with open(configFile, 'r') as f:
 		#skip the header line
 		lines = f.readlines()
-		#the first line of the config should be info, the second drawing cols, the third name cols
-		#the string manipulations strip out the new lines and then split the line by commas
-		#we skip the header, ergo we are 1 indexed
-		print lines[1]
-		print lines[2]
-		infoCols = [lines[1].strip('\n').split(',')[i] for i in range(len(lines[1].strip('\n').split(',')))]
-		drawingCols = [lines[2].strip('\n').split(',')[i] for i in range(len(lines[2].strip('\n').split(',')))]
-		nameCols = [lines[3].strip('\n').split(',')[i] for i in range(len(lines[3].strip('\n').split(',')))]
+		#the first line is info information, the second is numeric drawing cols and the third are name values
+		#information is stored in a tab separated file format 
+		infoCols = [lines[0].strip('\n').split('\t')[i] for i in range(len(lines[0].strip('\n').split('\t')))]
+		drawingCols = [lines[1].strip('\n').split('\t')[i] for i in range(len(lines[1].strip('\n').split('\t')))]
+		nameCols = [lines[2].strip('\n').split('\t')[i] for i in range(len(lines[2].strip('\n').split('\t')))]
 	
 	f.close()
 	return infoCols, drawingCols, nameCols
 
+#creates a dictionary mapping the indicies of values in the annotation tsv to column names
 def create_idx_dict(columns):
 	idx_dict = {}
 	cntr = 0
@@ -146,6 +152,7 @@ def read_tsv(tsv):
 		lines = f.readlines()
 		#just to be safe we strip out all returns from the input data (carriage returns and new line returns)
 		columns = lines[0].strip('\n').strip('\r').split('\t')
+		print columns
 		#for line in lines[1:]:
 		for line in lines[1:100]:
 			data.append(line.strip('\n').strip('\r').split('\t'))
@@ -160,10 +167,19 @@ def get_numeric_info(variantLine, idx_dict, drawingCols, variantRecord):
 		#ensure that we don't append the empty string, this breaks interpretation
 		if val == '': val = 'na'
 		#Values are written in this order: Name, real value, drawing value
-		drawingVal = str(drawingFunctions[col](val))
+
+		drawingVal = drawing_functions.get_drawing_val(col, val, distributionDict)
+
+		#NOTE! we need to create a drawing function that appropriately settles non included values
+		#if col in drawingFunctions:
+		#	drawingVal = str(drawingFunctions[col](val))
+		#ALERT MAGIC NUMBER
+		#else: drawingVal = 11.1
 
 		variantRecord['coreStmpFields']['numericAnnotations'][col]['value'] = val
 		variantRecord['coreStmpFields']['numericAnnotations'][col]['drawingValue'] = drawingVal
+		if col in defaultNumericDrawingCols:
+			variantRecord['coreStmpFields']['numericAnnotations'][col]['includeInDrawing'] = True
 
 #Note noah you still must cange this dude!
 def get_name_vals(variantLine, idx_dict, nameCols, variantRecord):
@@ -184,9 +200,16 @@ def get_name_vals(variantLine, idx_dict, nameCols, variantRecord):
 		if col == 'Function_Summary': val = random.choice(["exonic", "intronic", "UTR3", "splicing", "ncRNA_exonic"])
 		if col == 'ExonicFunction_Summary': val = random.choice(["nonsynonymous", "synonymous", "frameshift deletion", "stopgain", "frameshift insertion", "stoploss"])
 
-		drawingVal = str(nameFunctions[col](val))
+		if col in nameFunctions:
+			drawingVal = str(nameFunctions[col](val))
+		#ALERT MAGIC NUMBER
+		else: drawingVal = 11.1
+		
 		variantRecord['coreStmpFields']['stringAnnotations'][col]['value'] = val
 		variantRecord['coreStmpFields']['stringAnnotations'][col]['drawingValue'] = drawingVal
+
+		if col in defaultStringDrawingCols:
+			variantRecord['coreStmpFields']['stringAnnotations'][col]['includeInDrawing'] = True
 
 
 #gets basic variant info (i.e ref/alt etc) and writes it
@@ -281,22 +304,40 @@ def write_file(columns, linesToWrite, pos):
 #initializes the data structure for representation of variants in the json file
 def init_variant_structure(infoCols, numericCols, stringCols):
 	variant = {}
+	
+	#Core STMP fileds structure
 	coreStmpFields = {'infoFields': '', 'numericAnnotations': '', 'stringAnnotations': ''}
 	infoDict = {}
 	for col in infoCols:
 		infoDict[col] = ''
 	numericDict = {}
 	for col in numericCols:
-		numericEntryDict = {'value': '', 'drawingValue': ''}
+		#associated values refers to the other values found in STMP that are associated with the value--this gives us a way of associating many values in a tabular way
+		numericEntryDict = {'value': '', 'drawingValue': '', 'includeInDrawing': False, 'associatedValues': []}
+		#ALERT temporary!!!!
+		if col == 'Max_Allele_Freq_Summary':
+			numericEntryDict['associatedValues'] = ['uk10k_AF', 'gonl_AF', 'wellderly_freq_AF']
 		numericDict[col] = numericEntryDict
 	stringDict = {}
 	for col in stringCols:
-		stringEntryDict = {'value': '', 'drawingValue': ''}
+		stringEntryDict = {'value': '', 'drawingValue': '', 'includeInDrawing': False}
 		stringDict[col] = stringEntryDict
 	coreStmpFields['infoFields'] = infoDict
 	coreStmpFields['numericAnnotations'] = numericDict
 	coreStmpFields['stringAnnotations'] = stringDict
 	variant['coreStmpFields'] = coreStmpFields
+
+	#Curation Structure
+	curation = {'metrics': '', 'workflow': ''}
+	#alert! finish spec'ing out the metrics dictionary
+	metricsDict = {'numTimesClicked': '', 'otherMetrics???': ''}
+	curation['metrics'] = metricsDict
+	workflowDict = {'userInputtedAnnotations': '', 'searchAnnotations': '','freeTextNotes': 'enter any notes here'}
+	workflowDict['userInputtedAnnotations'] = {'IGV': ''}
+	workflowDict['searchAnnotations'] = {'String': '', 'Numeric': ''}
+	curation['workflow'] = workflowDict
+	variant['curation'] = curation
+
 	return variant
 
 #testing function that pretty prints the json structure
@@ -312,8 +353,7 @@ def write_json_file(filename, parsedJson):
 
 #test code for sorting data by specified value
 
-#data = [{'dog': 1, 'cat': 5, 'fish': 3, 'turtles': {'turtle1': 0, 'turtle2': 10}}, {'dog': 10, 'cat': -5, 'fish': 1, 'turtles': {'turtle1': 10, 'turtle2': -10}}, {'dog': 7, 'cat': 2, 'fish': 100, 'turtles': {'turtle1': -5, 'turtle2': 4}}]
-#jsonValuePath = "['turtles']['turtle1']"
+print "phantasm"
 
 tsv = sys.argv[1]
 
@@ -339,6 +379,10 @@ saveDir = "/home/noahfrie/noahfrie/devCode/stmpViz/outputFiles"
 
 #main program loop
 jsonData = []
+
+#drawing_functions.fit_distribution('QUAL', idx_dict, data, 50)
+distributionDict = drawing_functions.fit_all_distributions(numericCols, idx_dict, data, 50)
+
 for line in data:
 	curVariant = init_variant_structure(infoCols, numericCols, nameCols)
 	variant = line 
@@ -346,6 +390,7 @@ for line in data:
 	get_numeric_info(variant, idx_dict, numericCols, curVariant)
 	get_name_vals(variant, idx_dict, nameCols, curVariant)
 	jsonData.append(curVariant)
+
 
 sortingJsonValuePath = "['coreStmpFields']['numericAnnotations']['DP']['value']"
 sort_data(jsonData, sortingJsonValuePath)
